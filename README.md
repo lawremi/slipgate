@@ -30,6 +30,8 @@ which `-game` or `+map` incantation it needed.
   uninstalled later.
 - Shows installed entries first and lets Enter launch installed entries or
   install uninstalled entries from the result list.
+- Can launch an installed entry directly into the newest `.sav` file found for
+  that mod.
 - Supports deleting cached archives without uninstalling installed content.
 
 ## Search

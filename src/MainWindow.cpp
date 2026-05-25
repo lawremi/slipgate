@@ -9,6 +9,7 @@
 
 #include <QApplication>
 #include <QBoxLayout>
+#include <QCheckBox>
 #include <QDesktopServices>
 #include <QDir>
 #include <QFileDialog>
@@ -425,6 +426,8 @@ void MainWindow::buildUi()
     installButton_ = new QPushButton("Download && Install", actionPanel_);
     uninstallButton_ = new QPushButton("Uninstall", actionPanel_);
     deleteArchiveButton_ = new QPushButton("Delete Archive", actionPanel_);
+    loadLatestSaveCheck_ = new QCheckBox("Load latest save", actionPanel_);
+    loadLatestSaveCheck_->setToolTip("Launch with the newest .sav file for this mod instead of starting at the listed start map.");
     launchButton_ = new QPushButton("Launch", actionPanel_);
     progress_ = new QProgressBar(actionPanel_);
     progress_->setRange(0, 1);
@@ -438,6 +441,7 @@ void MainWindow::buildUi()
     actionLayout->addWidget(deleteArchiveButton_);
     actionLayout->addWidget(progress_, 1);
     actionLayout->addWidget(actionInfoLabel_, 1);
+    actionLayout->addWidget(loadLatestSaveCheck_);
     actionLayout->addWidget(launchButton_);
     detailLayout->addWidget(actionPanel_);
 
@@ -751,6 +755,8 @@ void MainWindow::updateActionPanel()
 
     launchButton_->setVisible(installingThis || installed);
     launchButton_->setEnabled(installed && !installingThis);
+    loadLatestSaveCheck_->setVisible(installed && !installingThis);
+    loadLatestSaveCheck_->setEnabled(installed && !installingThis);
     uninstallButton_->setVisible(installed && !installingThis);
     uninstallButton_->setEnabled(installed && !installingThis);
     deleteArchiveButton_->setVisible(archiveCached && !installingThis);
@@ -900,10 +906,11 @@ void MainWindow::launchWithEntry(const ModEntry &entry)
 {
     const QString quakeDir = quakeDirEdit_->text().trimmed();
     const QString client = clientEdit_->text().trimmed();
+    const LaunchOptions options{loadLatestSaveCheck_->isChecked()};
     QString error;
-    if (!launchMod(client, quakeDir, entry, &error)) {
-        QMessageBox::warning(this, "No launcher found", error);
+    if (!launchMod(client, quakeDir, entry, options, &error)) {
+        QMessageBox::warning(this, options.loadLatestSave ? "No save found" : "No launcher found", error);
         return;
     }
-    setStatus("Launched " + entry.displayTitle());
+    setStatus(options.loadLatestSave ? "Launched latest save for " + entry.displayTitle() : "Launched " + entry.displayTitle());
 }

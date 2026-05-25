@@ -6,6 +6,7 @@
 #include <QMainWindow>
 
 class CatalogService;
+class QCheckBox;
 class QLabel;
 class QLineEdit;
 class QGroupBox;
@@ -72,6 +73,7 @@ private:
     QPushButton *installButton_ = nullptr;
     QPushButton *uninstallButton_ = nullptr;
     QPushButton *deleteArchiveButton_ = nullptr;
+    QCheckBox *loadLatestSaveCheck_ = nullptr;
     QPushButton *launchButton_ = nullptr;
 
     bool catalogLoading_ = false;
