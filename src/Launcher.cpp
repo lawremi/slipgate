@@ -1,6 +1,5 @@
 #include "Launcher.h"
 
-#include <QDateTime>
 #include <QDir>
 #include <QDirIterator>
 #include <QFileInfo>
@@ -9,28 +8,77 @@
 
 namespace {
 
-QStringList gameDirectoriesFor(const ModEntry &entry, const QString &quakeDir)
+QStringList gameDirectoryNamesFor(const ModEntry &entry)
 {
-    QStringList dirs;
+    QStringList names;
     const QStringList args = QProcess::splitCommand(entry.commandLine);
     for (qsizetype i = 0; i < args.size(); ++i) {
         const QString arg = args.at(i);
         if (arg == "-game" && i + 1 < args.size()) {
-            dirs << QDir(quakeDir).filePath(args.at(++i));
+            names << args.at(++i);
             continue;
         }
         if (arg == "-hipnotic") {
-            dirs << QDir(quakeDir).filePath("hipnotic");
+            names << "hipnotic";
             continue;
         }
         if (arg == "-rogue") {
-            dirs << QDir(quakeDir).filePath("rogue");
+            names << "rogue";
             continue;
         }
     }
 
-    if (dirs.isEmpty()) {
-        dirs << QDir(quakeDir).filePath("id1");
+    if (names.isEmpty()) {
+        names << "id1";
+    }
+    names.removeDuplicates();
+    return names;
+}
+
+QStringList sourcePortSaveRoots(const QString &clientExecutable)
+{
+    const QString clientName = QFileInfo(clientExecutable).baseName().toLower();
+    QStringList roots;
+
+#ifdef Q_OS_WIN
+    // Slipgate launches source ports with -basedir, and the Windows builds of
+    // the QuakeSpasm family generally use the active game dir under that base.
+    // Do not guess at unrelated per-port folders here; a found save must also
+    // be loadable by "+load <name>" in the launched process.
+    Q_UNUSED(clientName);
+#elif defined(Q_OS_MACOS)
+    if (clientName.contains("ironwail")) {
+        roots << QDir::homePath() + "/Library/Application Support/Ironwail";
+    }
+    if (clientName.contains("vkquake")) {
+        roots << QDir::homePath() + "/Library/Application Support/vkQuake";
+    }
+    if (clientName.contains("quakespasm") || clientName == "qss") {
+        roots << QDir::homePath() + "/Library/Application Support/QuakeSpasm";
+    }
+#else
+    if (clientName.contains("ironwail")) {
+        roots << QDir::homePath() + "/.ironwail";
+    } else if (clientName.contains("vkquake")) {
+        roots << QDir::homePath() + "/.vkquake";
+    } else if (clientName.contains("quakespasm") || clientName == "qss") {
+        roots << QDir::homePath() + "/.quakespasm";
+    }
+#endif
+
+    roots.removeDuplicates();
+    return roots;
+}
+
+QStringList saveDirectoriesFor(const QString &clientExecutable, const ModEntry &entry, const QString &quakeDir)
+{
+    QStringList dirs;
+    const QStringList names = gameDirectoryNamesFor(entry);
+    for (const QString &name : names) {
+        dirs << QDir(quakeDir).filePath(name);
+        for (const QString &root : sourcePortSaveRoots(clientExecutable)) {
+            dirs << QDir(root).filePath(name);
+        }
     }
     dirs.removeDuplicates();
     return dirs;
@@ -61,12 +109,15 @@ QString newestSaveNameIn(const QString &gameDir)
     return QDir::fromNativeSeparators(relative);
 }
 
-QString newestSaveName(const ModEntry &entry, const QString &quakeDir)
+QString newestSaveName(const QString &clientExecutable, const ModEntry &entry, const QString &quakeDir, QStringList *searchedDirs)
 {
     QFileInfo newestFile;
     QString newestName;
 
-    for (const QString &gameDir : gameDirectoriesFor(entry, quakeDir)) {
+    for (const QString &gameDir : saveDirectoriesFor(clientExecutable, entry, quakeDir)) {
+        if (searchedDirs) {
+            *searchedDirs << gameDir;
+        }
         const QString saveName = newestSaveNameIn(gameDir);
         if (saveName.isEmpty()) {
             continue;
@@ -84,7 +135,7 @@ QString newestSaveName(const ModEntry &entry, const QString &quakeDir)
 
 } // namespace
 
-QStringList launchArgumentsFor(const ModEntry &entry, const QString &quakeDir, const LaunchOptions &options, QString *error)
+QStringList launchArgumentsFor(const QString &clientExecutable, const ModEntry &entry, const QString &quakeDir, const LaunchOptions &options, QString *error)
 {
     QStringList args;
     if (!entry.commandLine.isEmpty()) {
@@ -92,10 +143,11 @@ QStringList launchArgumentsFor(const ModEntry &entry, const QString &quakeDir, c
     }
 
     if (options.loadLatestSave) {
-        const QString saveName = newestSaveName(entry, quakeDir);
+        QStringList searchedDirs;
+        const QString saveName = newestSaveName(clientExecutable, entry, quakeDir, &searchedDirs);
         if (saveName.isEmpty()) {
             if (error) {
-                *error = "No save files were found for " + entry.displayTitle() + ".";
+                *error = "No save files were found for " + entry.displayTitle() + ". Searched: " + searchedDirs.join(", ");
             }
             return {};
         }
@@ -108,7 +160,7 @@ QStringList launchArgumentsFor(const ModEntry &entry, const QString &quakeDir, c
 
 bool launchMod(const QString &clientExecutable, const QString &quakeDir, const ModEntry &entry, const LaunchOptions &options, QString *error)
 {
-    const QStringList args = launchArgumentsFor(entry, quakeDir, options, error);
+    const QStringList args = launchArgumentsFor(clientExecutable, entry, quakeDir, options, error);
     if (options.loadLatestSave && args.isEmpty()) {
         return false;
     }
