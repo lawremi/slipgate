@@ -18,7 +18,6 @@ public:
     [[nodiscard]] const InstallState &state() const;
     [[nodiscard]] bool isBusy() const;
     [[nodiscard]] bool isInstalled(const QString &sha256) const;
-    [[nodiscard]] bool isArchiveCached(const ModEntry &entry) const;
     [[nodiscard]] bool archiveExists(const ModEntry &entry) const;
     [[nodiscard]] bool archiveChecksumValid(const ModEntry &entry) const;
     [[nodiscard]] QString installingSha() const;

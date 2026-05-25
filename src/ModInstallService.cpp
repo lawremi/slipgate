@@ -39,11 +39,6 @@ bool ModInstallService::isInstalled(const QString &sha256) const
     return state_.installedSha.contains(sha256);
 }
 
-bool ModInstallService::isArchiveCached(const ModEntry &entry) const
-{
-    return archiveExists(entry) && archiveChecksumValid(entry);
-}
-
 bool ModInstallService::archiveExists(const ModEntry &entry) const
 {
     return QFileInfo::exists(archivePathFor(entry));

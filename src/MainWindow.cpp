@@ -736,7 +736,7 @@ void MainWindow::updateActionPanel()
     const bool hasSelection = !entry.sha256.isEmpty();
     const bool installingThis = hasSelection && installService_->installingSha() == entry.sha256 && installService_->isBusy();
     const bool installed = hasSelection && installService_->isInstalled(entry.sha256);
-    const bool archiveCached = hasSelection && installService_->isArchiveCached(entry);
+    const bool archiveCached = hasSelection && installService_->archiveExists(entry);
 
     actionPanel_->setVisible(!catalogLoading_ && hasSelection);
     if (catalogLoading_ || !hasSelection) {
